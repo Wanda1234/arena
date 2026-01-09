@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>Arena 專業預覽器 (含格式備註)</title>
+    <style>
+        body { background-color: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        
+        /* 佈局容器 */
+        .arena-container { display: flex; flex-direction: column; align-items: center; gap: 0; }
+        .walls-row { display: flex; gap: 0; }
+
+        .drop-zone {
+            background: #111; border: 1px solid #222; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; box-sizing: border-box;
+        }
+
+        /* 規格比例 */
+        .wall { width: 350px; aspect-ratio: 1890 / 1080; }
+        .floor { width: 350px; aspect-ratio: 1890 / 1890; }
+
+        video, img { 
+            width: 100%; height: 100%; object-fit: fill; 
+            display: none; transition: transform 0.3s ease;
+        }
+
+        /* 標籤與旋轉控制 */
+        .zone-controls { position: absolute; top: 0; left: 0; z-index: 20; display: flex; gap: 5px; padding: 5px; }
+        .label { background: rgba(0,0,0,0.7); padding: 2px 8px; font-size: 11px; color: #fff; }
+        .rotate-btn { background: #ffc107; color: #000; border: none; cursor: pointer; font-size: 10px; padding: 2px 5px; border-radius: 3px; }
+
+        /* 備註說明區 */
+        .note-box {
+            margin-top: 20px; width: 85%; max-width: 1000px;
+            background: #1a1a1a; padding: 15px; border-radius: 10px;
+            border-left: 5px solid #007bff; font-size: 13px; line-height: 1.6;
+        }
+        .note-box h4 { margin: 0 0 10px 0; color: #007bff; }
+        .tag-ok { color: #28a745; font-weight: bold; }
+        .tag-no { color: #dc3545; font-weight: bold; }
+
+        /* 控制台 */
+        .controls-panel { margin-top: 20px; width: 85%; max-width: 1000px; background: #222; padding: 15px; border-radius: 15px; }
+        .progress-container { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        #mainProgress { flex-grow: 1; cursor: pointer; accent-color: #28a745; }
+        .btn-group { display: flex; justify-content: center; gap: 10px; }
+        button.main-btn { padding: 8px 20px; cursor: pointer; border-radius: 15px; border: none; background: #444; color: white; }
+        .btn-play { background: #28a745; }
+    </style>
+</head>
+<body>
+
+    <div class="arena-container">
+        <div class="walls-row">
+            <div class="drop-zone wall" id="z1"><div class="zone-controls"><span class="label">左牆</span><button class="rotate-btn" onclick="rotateZone('z1')">↻ 旋轉</button></div><video loop></video><img src=""></div>
+            <div class="drop-zone wall" id="z2"><div class="zone-controls"><span class="label">中牆</span><button class="rotate-btn" onclick="rotateZone('z2')">↻ 旋轉</button></div><video loop></video><img src=""></div>
+            <div class="drop-zone wall" id="z3"><div class="zone-controls"><span class="label">右牆</span><button class="rotate-btn" onclick="rotateZone('z3')">↻ 旋轉</button></div><video loop></video><img src=""></div>
+        </div>
+        <div class="drop-zone floor" id="z4"><div class="zone-controls"><span class="label">地面</span><button class="rotate-btn" onclick="rotateZone('z4')">↻ 旋轉</button></div><video loop></video><img src=""></div>
+    </div>
+
+    <div class="note-box">
+        <h4>📋 素材測試說明 (相容性指南)</h4>
+        <div><span class="tag-ok">● 可以測試：</span> MP4, MOV (H.264編碼), JPG, PNG, GIF</div>
+        <div><span class="tag-no">● 無法測試：</span> DXV3 (Arena專用編碼), ProRes (大部份瀏覽器不支援)</div>
+        <div style="color: #888; margin-top: 5px;">※ 提示：若影片讀不到，請先轉檔為 H.264 編碼的 MP4 再拖入。</div>
+    </div>
+
+    <div class="controls-panel">
+        <div class="progress-container">
+            <input type="range" id="mainProgress" value="0" min="0" step="0.1">
+        </div>
+        <div class="btn-group">
+            <button class="main-btn btn-play" id="playBtn">播放 / 暫停 (Space)</button>
+            <button class="main-btn" onclick="location.reload()">全部清空</button>
+        </div>
+    </div>
+
+    <script>
+        const videos = document.querySelectorAll('video');
+        const progressBar = document.getElementById('mainProgress');
+        const rotations = { z1: 0, z2: 0, z3: 0, z4: 0 };
+
+        function rotateZone(id) {
+            const zone = document.getElementById(id);
+            const media = zone.querySelectorAll('video, img');
+            rotations[id] = (rotations[id] + 90) % 360;
+            media.forEach(el => {
+                el.style.transform = `rotate(${rotations[id]}deg)`;
+                el.style.objectFit = (rotations[id] % 180 !== 0) ? "contain" : "fill";
+            });
+        }
+
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            const video = zone.querySelector('video');
+            const img = zone.querySelector('img');
+            zone.addEventListener('dragover', e => e.preventDefault());
+            zone.addEventListener('drop', e => {
+                e.preventDefault();
+                const file = e.dataTransfer.files[0];
+                if (!file) return;
+                const url = URL.createObjectURL(file);
+                if (file.type.startsWith('video/')) {
+                    img.style.display = 'none'; video.src = url; video.style.display = 'block';
+                    video.onerror = () => alert("影片編碼不支援 (可能是DXV/ProRes)，請轉為H.264再試！");
+                    video.onloadedmetadata = () => { progressBar.max = video.duration; };
+                    video.load();
+                } else {
+                    video.style.display = 'none'; video.src = ""; img.src = url; img.style.display = 'block';
+                }
+            });
+        });
+
+        function togglePlay() {
+            const isPaused = videos[0].paused;
+            videos.forEach(v => { if (v.src) { v.muted = false; isPaused ? v.play() : v.pause(); } });
+        }
+
+        setInterval(() => {
+            const v = Array.from(videos).find(v => v.readyState >= 2 && !v.paused);
+            if (v) progressBar.value = v.currentTime;
+        }, 100);
+
+        progressBar.addEventListener('input', () => {
+            videos.forEach(v => { if (v.src) v.currentTime = progressBar.value; });
+        });
+
+        document.getElementById('playBtn').addEventListener('click', togglePlay);
+        document.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); togglePlay(); } });
+    </script>
+</body>
+</html>
